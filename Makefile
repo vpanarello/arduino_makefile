@@ -1,27 +1,29 @@
 
-########### BULDER PREFERENCES ###########
-
-ARDUINO_FOLDER = C:/opensource/arduino-1.8.1
-
 ########### AVR TARGET MCU SPECS ###########
 
 MCU = atmega328p
 MCU_CLK = 16000000L
 
-###########  PROGRAMMER OPTIONS (AVRDUDE) ########### 
+########### BULDER PREFERENCES ###########
 
-AVRDUDE_PROGRAMMER = arduino #avrisp 
-AVRDUDE_PORT = COM3
+ARDUINO_FOLDER = C:/opensource/arduino-1.8.1
 
-########### STANDART PROJECT STRUCTURE (make init) ###########
+########### RESOURCE FOLDERS ###########
 
-# project
-#	|_(build)
-#		|_(cores)
-#   |_(libs)
-#	|_main.cpp
+# Specify de main cores sources of arduino
+CORES_FOLDER = $(ARDUINO_FOLDER)/hardware/arduino/avr/cores/arduino
+# Specify avr tools of arduino folder
+AVR_TOOLS = /hardware/tools/avr/bin
 
-# This source must contain the 'int main() {}' function
+########### AVR STANDARD LIBS ###########
+
+INCLUDE_01 = C:\opensource\arduino-1.8.1\hardware\arduino\avr\cores\arduino
+INCLUDE_02 = C:\opensource\arduino-1.8.1\hardware\arduino\avr\variants\standard
+
+INCLUDES = -I"$(INCLUDE_01)" -I"$(INCLUDE_02)"
+
+########### PROJECT STRUCTURE ###########
+
 MAIN_FILE = main.cpp
 
 LIBRARIES = libs/
@@ -29,35 +31,18 @@ BUILD_OUTPUT = build/
 BUILD_CORES = $(BUILD_OUTPUT)cores/
 LINKED_CORE_FILE = core.a
 
-########### STATIC RESOURCE FOLDERS ###########
-
-# Specify de main cores sources of arduino
-CORES_FOLDER = $(ARDUINO_FOLDER)/hardware/arduino/avr/cores/arduino
-# Specify avr tools of arduino folder
-AVR_TOOLS = $(ARDUINO_FOLDER)/hardware/tools/avr/bin
-
 ########### AVR TOOLS ###########
 
-GPP = $(AVR_TOOLS)\avr-g++
-GCC = $(AVR_TOOLS)\avr-gcc
-AR = $(AVR_TOOLS)\avr-gcc-ar
-DUMP = $(AVR_TOOLS)\avr-objdump
-DUDE = $(AVR_TOOLS)\avrdude
-SIZE = $(AVR_TOOLS)\avr-size
-COPY = $(AVR_TOOLS)\avr-objcopy
-
-########### AVR STANDARD LIBS ###########
-
-INCLUDES += -I"C:\opensource\arduino-1.8.1\hardware\arduino\avr\cores\arduino"
-INCLUDES += -I"C:\opensource\arduino-1.8.1\hardware\arduino\avr\variants\standard"
+GPP = $(ARDUINO_FOLDER)$(AVR_TOOLS)\avr-g++
+GCC = $(ARDUINO_FOLDER)$(AVR_TOOLS)\avr-gcc
+AR = $(ARDUINO_FOLDER)$(AVR_TOOLS)\avr-gcc-ar
+DUMP = $(ARDUINO_FOLDER)$(AVR_TOOLS)\avr-objdump
+DUDE = $(ARDUINO_FOLDER)$(AVR_TOOLS)\avr-dude
+SIZE = $(ARDUINO_FOLDER)$(AVR_TOOLS)\avr-size
 
 ########### AVR PREPROCESSOR DEFINES ###########
 
-TAGS += -DF_CPU=$(MCU_CLK)   
-TAGS += -DARDUINO=10801
-TAGS += -DARDUINO_AVR_UNO
-TAGS += -DARDUINO_ARCH_AVR
-
+TAGS = -DF_CPU=$(MCU_CLK) -DARDUINO=10801 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR
 MCU_SPECS = -mmcu=$(MCU) $(TAGS)
  
 ########### AVR COMPILER DEFINITIONS ###########
@@ -102,49 +87,16 @@ GPP_SOURCES += $(foreach folder, $(INCLUDE_SUBFOLDERS), $(wildcard $(folder)*.cp
 GCC_CORES = $(wildcard $(CORES_FOLDER)/*.c)
 GPP_CORES = $(wildcard $(CORES_FOLDER)/*.cpp)
 
-########### UPLOADABLE FORMATS ###########
-
-OBJCOPY_TAGS = -O ihex -R .eeprom
-
-###########  Programming Options (avrdude) ########### 
-
-AVRDUDE_CONF =  $(ARDUINO_FOLDER)/hardware/tools/avr/etc/avrdude.conf
-
-AVRDUDE_BAUD = 115200
-
-AVRDUDE_FLASH_WRITE = -U flash:w:$(BUILD_FOLDER)$(basename $(MAIN_FILE)).hex:i
-AVRDUDE_FLASH_READ = -U flash:r:$(BUILD_FOLDER)read_$(basename $(MAIN_FILE)).hex:i
-
-AVRDUDE_EEPROM_WRITE = -U eeprom:w:$(BUILD_FOLDER)$(basename $(MAIN_FILE)).eep:i
-AVRDUDE_EEPROM_READ = -U eeprom:r:$(BUILD_FOLDER)read_$(basename $(MAIN_FILE)).eep:i
 
 
-# Uncomment the following if you want avrdude's erase cycle counter.
-# Note that this counter needs to be initialized first using -Yn,
-# see avrdude manual.
-#AVRDUDE_ERASE_COUNTER = -y
-
-# Uncomment the following if you do /not/ wish a verification to be
-# performed after programming the device.
-#AVRDUDE_NO_VERIFY = -V
-
-# Increase verbosity level.  Please use this when submitting bug
-# reports about avrdude. See <http://savannah.nongnu.org/projects/avrdude> 
-# to submit bug reports.
-AVRDUDE_VERBOSE = -v -v
-
-AVRDUDE_D_FLAG = -D
-
-AVRDUDE_FLAGS = -C $(AVRDUDE_CONF) -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER) -b $(AVRDUDE_BAUD)
-AVRDUDE_FLAGS += $(AVRDUDE_NO_VERIFY)
-AVRDUDE_FLAGS += $(AVRDUDE_VERBOSE)
-AVRDUDE_FLAGS += $(AVRDUDE_ERASE_COUNTER)
-AVRDUDE_FLAGS += $(AVRDUDE_D_FLAG)
+########### AVR PROGRAM SIZES ###########
 
 
 ########### BUILD RECIPES ###########
 
-all: compile link tohex size
+all: compile link size
+
+test:
 
 compile:
 	@for filename in $(GPP_SOURCES); \
@@ -181,7 +133,7 @@ linkcores:
 	@for filename in $(CORES_OBJECT_FILES); do $(AR_LINKER) $(BUILD_FOLDER)$(LINKED_CORE_FILE) "$$filename"; done
 	@echo ''
 
-dumpcore: $(BUILD_CORES)$(LINKED_CORE_FILE)
+dumpcore:
 	@$(DUMP) -d $(BUILD_CORES)$(LINKED_CORE_FILE)
 	
 link:
@@ -201,43 +153,21 @@ size:
 	@echo
 	@echo
 	@$(SIZE) --mcu=$(MCU) --format=avr $(BUILD_FOLDER)$(basename $(MAIN_FILE)).elf
-
-
-########### UPLOADABLE FORMATS RECIPES ###########
-
-tohex: $(BUILD_FOLDER)$(basename $(MAIN_FILE)).elf
-	@echo "*** Converting to intel hexadecimal format... '$(BUILD_FOLDER)$(basename $(MAIN_FILE)).elf' -> '$(BUILD_FOLDER)$(basename $(MAIN_FILE)).hex' "
-	@"$(COPY)" $(OBJCOPY_TAGS) "$(BUILD_FOLDER)$(basename $(MAIN_FILE)).elf" "$(BUILD_FOLDER)$(basename $(MAIN_FILE)).hex"
-
-# "C:\opensource\arduino-1.8.1\hardware\tools\avr/bin/avr-objcopy" -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma .eeprom=0  "C:\Users\VagnerF\AppData\Local\Temp\arduino_build_909140/sketch_jun15a.ino.elf" "C:\Users\VagnerF\AppData\Local\Temp\arduino_build_909140/sketch_jun15a.ino.eep"
-# "C:\opensource\arduino-1.8.1\hardware\tools\avr/bin/avr-objcopy" -O ihex -R .eeprom  "C:\Users\VagnerF\AppData\Local\Temp\arduino_build_909140/sketch_jun15a.ino.elf" "C:\Users\VagnerF\AppData\Local\Temp\arduino_build_909140/sketch_jun15a.ino.hex"
-
-
-########### DEVICE PROGRAM RECIPES ###########
-
-program: $(BUILD_FOLDER)$(basename $(MAIN_FILE)).hex
-	$(DUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_FLASH_WRITE)
-
-program-read:
-	$(DUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_FLASH_READ)
-
-program-eeprom: $(TARGET).eep
-	$(DUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_EEPROM_WRITE)
-
-program-read-eeprom:
-	$(DUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_EEPROM_READ)
-
-program-erase:
-	$(DUDE) $(AVRDUDE_FLAGS) -e
-
-
-########### MAINTENANCE RECIPES ###########
-
+		
 init:
 	@if [ ! -d $(BUILD_OUTPUT) ]; then mkdir -v $(BUILD_OUTPUT); fi
 	@if [ ! -d $(BUILD_CORES) ]; then mkdir -v $(BUILD_CORES); fi
 	@if [ ! -d $(LIBRARIES) ]; then mkdir -v $(LIBRARIES); fi
-	@if [ ! -a $(MAIN_FILE) ] ; then touch $(MAIN_FILE); fi;
+	@if [ ! -a $(MAIN_FILE) ] ; \
+		then \
+			touch $(MAIN_FILE); \
+			echo 'int main() {   for(;;){  }  }' >> $(MAIN_FILE); \
+	fi;
+	@if [ ! -a .gitignore ] ; \
+		then \
+			touch .gitignore; \
+			echo $(BUILD_OUTPUT) >> .gitignore; \
+	fi;
 
 cleanall: cleancores clean
 
@@ -245,7 +175,6 @@ clean:
 	@rm -v $(BUILD_FOLDER)*.o
 	@rm -v $(BUILD_FOLDER)*.d
 	@rm -v $(BUILD_FOLDER)*.elf
-	@rm -v $(BUILD_FOLDER)*.hex
 
 cleancores:
 	@rm -v $(BUILD_CORES)*.o
@@ -253,7 +182,6 @@ cleancores:
 	@rm -v $(BUILD_FOLDER)core.a
 
 help:
-	@echo '         init -> initialize a new project folder structure'
 	@echo '          all ->'
 	@echo '      compile ->'
 	@echo '        cores -> compile, link cores and genereate core.a file'
@@ -263,6 +191,7 @@ help:
 	@echo '         link ->'
 	@echo '         dump ->'
 	@echo '         size ->'
+	@echo '         init ->'
 	@echo '     cleanall ->'
 	@echo '        clean ->'
 	@echo '   cleancores ->'
@@ -274,7 +203,7 @@ help:
 # .a	-> library object file
 # .o	-> compiled (c/cpp) object files
 # .elf	-> output file for debbugers (output linking binary file)
-# .epp	-> output files for uC build-in eproms
+# .epp	-> output files for uC build-in eekjjkjproms
 # .hex	-> output files to uC flash upload program
 
 ########### AVR TOOLS HELP PRINTS ###########
